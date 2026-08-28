@@ -19,6 +19,34 @@ export async function getDoc(roomId: string): Promise<Y.Doc> {
     Y.applyUpdate(ydoc, new Uint8Array(u.update));
   }
 
-  docs.set(roomId, ydoc);   
+  docs.set(roomId, ydoc);
   return ydoc;
 }
+
+export async function applyAndPersist(roomId: string, update: Uint8Array) {
+  const ydoc = await getDoc(roomId);
+  Y.applyUpdate(ydoc, update);
+
+  await Update.create({ roomId, update: Buffer.from(update) });
+
+  const count = await Update.countDocuments({ roomId });
+  if (count % 50 === 0) await writeSnapshot(roomId, ydoc);
+}
+
+async function writeSnapshot(roomId: string, ydoc: Y.Doc) {
+  const snapshot = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+  await Snapshot.findOneAndUpdate(
+    { roomId },
+    { snapshot, updatedAt: new Date() },
+    { upsert: true }
+  );
+
+  await Update.deleteMany({ roomId, ts: { $lte: new Date() } });
+  console.log(`[ydoc] Snapshot written for room ${roomId}`);
+}
+
+export function getCurrentState(roomId: string): Uint8Array | null {
+  const doc = docs.get(roomId);
+  return doc ? Y.encodeStateAsUpdate(doc) : null;
+}
+
