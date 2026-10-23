@@ -2,21 +2,23 @@ import mongoose from 'mongoose';
 
 export async function connectDB() {
   const uri = process.env.MONGO_URI ?? 'mongodb://localhost:27017/collab-editor';
-  await mongoose.connect(uri);  
-  console.log('MongoDB connected');
+  await mongoose.connect(uri);
+  console.log('[db] MongoDB connected');
 }
 
+// Full document snapshot (written every 50 updates)
 const snapshotSchema = new mongoose.Schema({
-  roomId: { type: String, required: true, unique: true },
-  snapshot: { type: Buffer, required: true },
+  roomId:    { type: String, required: true, unique: true },
+  snapshot:  { type: Buffer, required: true },
   updatedAt: { type: Date, default: Date.now },
 });
 
+// Incremental Yjs updates between snapshots
 const updateSchema = new mongoose.Schema({
   roomId: { type: String, required: true, index: true },
   update: { type: Buffer, required: true },
-  ts: { type: Date, default: Date.now, index: true },
+  ts:     { type: Date, default: Date.now, index: true },
 });
 
 export const Snapshot = mongoose.model('Snapshot', snapshotSchema);
-export const Update = mongoose.model('Update', updateSchema);
+export const Update   = mongoose.model('Update',   updateSchema);

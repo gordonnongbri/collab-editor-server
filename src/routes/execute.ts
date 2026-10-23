@@ -4,7 +4,7 @@ import { runCode } from '../execution/runner';
 export const executeRouter = Router();
 
 executeRouter.post('/', async (req: Request, res: Response) => {
-  const { code, language, roomId } = req.body;
+  const { code, language } = req.body;
 
   if (!code || !language) {
     return res.status(400).json({ error: 'code and language are required' });
@@ -15,7 +15,7 @@ executeRouter.post('/', async (req: Request, res: Response) => {
   }
 
   if (code.length > 50_000) {
-    return res.status(400).json({ error: 'Code too large' });
+    return res.status(400).json({ error: 'Code too large (max 50kb)' });
   }
 
   try {
@@ -23,9 +23,11 @@ executeRouter.post('/', async (req: Request, res: Response) => {
     return res.json(result);
   } catch (err: any) {
     if (err.message === 'TIMEOUT') {
-      return res.status(408).json({ stdout: '', stderr: 'Execution timed out (5s limit)', exitCode: -1, durationMs: 5000 });
+      return res.status(408).json({
+        stdout: '', stderr: 'Execution timed out (5s limit)', exitCode: -1, durationMs: 5000,
+      });
     }
-    console.error('[execute] error', err);
+    console.error('[execute] error:', err);
     return res.status(500).json({ error: 'Execution failed' });
   }
 });
